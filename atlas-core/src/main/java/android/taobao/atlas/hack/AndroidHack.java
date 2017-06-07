@@ -210,14 +210,11 @@ package android.taobao.atlas.hack;
 
 import android.app.Application;
 import android.app.Instrumentation;
-import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.taobao.atlas.framework.Atlas;
 import android.taobao.atlas.runtime.ActivityTaskMgr;
@@ -231,17 +228,14 @@ import android.util.Log;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.WeakHashMap;
 
 public class AndroidHack {
 
     private static Object _sActivityThread = null;
-    private static Object _mLoadedApk      = null;
+    private static Object _mLoadedApk = null;
 
     public static Object getActivityThread() throws Exception {
         if (_sActivityThread == null) {
@@ -264,22 +258,33 @@ public class AndroidHack {
             throw new Exception("Failed to get ActivityThread.sCurrentActivityThread");
         }
         try {
+            /**
+             * ActivityThread$H 这个是ActivityThread的内部类Handler( private class H extends Handler {)
+             */
             final Hack.HackedClass<Object> H = Hack.into("android.app.ActivityThread$H");
             Hack.HackedField<Object, Object> ActivityThread_mH = AtlasHacks.ActivityThread.field("mH").ofType(H.getmClass());
             final Handler handler = (Handler) ActivityThread_mH.get(activityThread);
             Field field = Handler.class.getDeclaredField("mCallback");
             field.setAccessible(true);
-            field.set(handler,new ActivityThreadHook(activityThread,handler));
+            field.set(handler, new ActivityThreadHook(activityThread, handler));
         } catch (Hack.HackDeclaration.HackAssertionException e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    public static Object getLoadedApk(Application application,Object activityThread, String packageName) {
-        if(_mLoadedApk!=null){
+    /**
+     * LoadedApk对象是APK文件在内存中的表示。
+     *
+     * @param application
+     * @param activityThread
+     * @param packageName
+     * @return
+     */
+    public static Object getLoadedApk(Application application, Object activityThread, String packageName) {
+        if (_mLoadedApk != null) {
             return _mLoadedApk;
-        }else {
+        } else {
             Map<String, Object> mPackages = (Map<String, Object>) AtlasHacks.ActivityThread_mPackages.get(activityThread);
             WeakReference<?> rf = (WeakReference<?>) mPackages.get(packageName);
             if (rf != null && rf.get() != null) {
@@ -292,17 +297,18 @@ public class AndroidHack {
 
     /**
      * 用getPackageInfoNoCheck 创建一个新的LoadedApk
+     *
      * @param application
      * @param activityThread
      * @return
      */
-    public static Object createNewLoadedApk(Application application,Object activityThread){
+    public static Object createNewLoadedApk(Application application, Object activityThread) {
         try {
             PackageManager manager = RuntimeVariables.androidApplication.getPackageManager();
-            ApplicationInfo info = manager.getApplicationInfo(RuntimeVariables.androidApplication.getPackageName(),PackageManager.GET_ACTIVITIES);
-            String currentSource = info!=null ? info.sourceDir : null;
-            if(Atlas.sAPKSource == null || currentSource==null || !currentSource.equals(Atlas.sAPKSource)){
-                Log.e("AndroidHack",Atlas.sAPKSource + " | " + currentSource);
+            ApplicationInfo info = manager.getApplicationInfo(RuntimeVariables.androidApplication.getPackageName(), PackageManager.GET_ACTIVITIES);
+            String currentSource = info != null ? info.sourceDir : null;
+            if (Atlas.sAPKSource == null || currentSource == null || !currentSource.equals(Atlas.sAPKSource)) {
+                Log.e("AndroidHack", Atlas.sAPKSource + " | " + currentSource);
                 ActivityTaskMgr.getInstance().clearActivityStack();
                 android.os.Process.killProcess(android.os.Process.myPid());
                 System.exit(0);
@@ -314,16 +320,16 @@ public class AndroidHack {
             PackageManager packageManager = application.getPackageManager();
             Resources mResources = application.getResources();
             Method getCompatibilityInfo = null;
-            if(mResources instanceof DelegateResources) {
+            if (mResources instanceof DelegateResources) {
                 getCompatibilityInfo = mResources.getClass().getSuperclass().getDeclaredMethod("getCompatibilityInfo");
-            }else{
-                getCompatibilityInfo = findMethod(mResources,"getCompatibilityInfo");
+            } else {
+                getCompatibilityInfo = findMethod(mResources, "getCompatibilityInfo");
             }
             getCompatibilityInfo.setAccessible(true);
             Class ComplatibilityInfoClass = Class.forName("android.content.res.CompatibilityInfo");
             Object compatibilityInfo = getCompatibilityInfo.invoke(application.getResources());
 
-            Class<?> args[] = {ApplicationInfo.class,ComplatibilityInfoClass};
+            Class<?> args[] = {ApplicationInfo.class, ComplatibilityInfoClass};
             Method getPackageInfoNoCheck = AtlasHacks.ActivityThread.getmClass().getDeclaredMethod(
                     "getPackageInfoNoCheck", args);
             getPackageInfoNoCheck.setAccessible(true);
@@ -331,15 +337,15 @@ public class AndroidHack {
             _mLoadedApk = loadedApk;
             Field mApplicationField = _mLoadedApk.getClass().getDeclaredField("mApplication");
             mApplicationField.setAccessible(true);
-            mApplicationField.set(_mLoadedApk,RuntimeVariables.androidApplication);
+            mApplicationField.set(_mLoadedApk, RuntimeVariables.androidApplication);
             return loadedApk;
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    private static Method findMethod(Object instance, String name,Class<?>... params) throws NoSuchFieldException {
+    private static Method findMethod(Object instance, String name, Class<?>... params) throws NoSuchFieldException {
         for (Class<?> clazz = instance.getClass(); clazz != null; clazz = clazz.getSuperclass()) {
             try {
                 Method method = clazz.getDeclaredMethod(name, params);
@@ -360,7 +366,7 @@ public class AndroidHack {
 
     /**
      * Set classLoader to LoadedApk.mClassLoader and set LoadedApk.mApplication to null
-     * 
+     *
      * @param packageName
      * @param classLoader
      * @throws Exception
@@ -371,17 +377,26 @@ public class AndroidHack {
             throw new Exception("Failed to get ActivityThread.sCurrentActivityThread");
         }
 
+        /**
+         * android.app.LoadedApk:   LoadedApk对象是APK文件在内存中的表示。
+         * Apk文件的相关信息，诸如Apk文件的代码和资源，甚至代码里面的Activity，Service等组件的信息我们都可以通过此对象获取。
+         *
+         * 这里和系统的策略是一样的，首先从缓存中获取，若缓存没命中，则直接创建一个
+         */
         // Try to get loadedAPK from weak reference cache
-        Object loadedApk = getLoadedApk(RuntimeVariables.androidApplication,activityThread, packageName);
-        if(loadedApk==null){
-            loadedApk = createNewLoadedApk(RuntimeVariables.androidApplication,activityThread);
+        Object loadedApk = getLoadedApk(RuntimeVariables.androidApplication, activityThread, packageName);
+        if (loadedApk == null) {
+            loadedApk = createNewLoadedApk(RuntimeVariables.androidApplication, activityThread);
         }
         if (loadedApk == null) {
             throw new Exception("Failed to get ActivityThread.mLoadedApk");
         }
 
         //AtlasHacks.LoadedApk_mClassLoader.on(loadedApk).set(classLoader);
-        AtlasHacks.LoadedApk_mClassLoader.set(loadedApk,classLoader);
+        /**
+         * 将新创建的DelegateClassLoader注入到loadApk中以加载
+         */
+        AtlasHacks.LoadedApk_mClassLoader.set(loadedApk, classLoader);
         //AtlasHacks.LoadedApk_mApplication.on(loadedApk).set(null);
     }
 
@@ -405,27 +420,27 @@ public class AndroidHack {
 //        AtlasHacks.LoadedApk_mApplication.set(loadedApk,application);
 //        AtlasHacks.ActivityThread_mInitialApplication.set(activityThread,application);
 //    }
-    
+
     public static void injectResources(Application application, Resources resources) throws Exception {
         Object activityThread = getActivityThread();
         if (activityThread == null) {
             throw new Exception("Failed to get ActivityThread.sCurrentActivityThread");
         }
 
-        Object loadedApk = getLoadedApk(application,activityThread, application.getPackageName());
-        if(loadedApk==null){
-            loadedApk = createNewLoadedApk(application,activityThread);
-            if(loadedApk==null){
+        Object loadedApk = getLoadedApk(application, activityThread, application.getPackageName());
+        if (loadedApk == null) {
+            loadedApk = createNewLoadedApk(application, activityThread);
+            if (loadedApk == null) {
                 throw new RuntimeException(" Failed to get ActivityThread.mLoadedApk");
             }
             ClassLoader classLoader = AtlasHacks.LoadedApk_mClassLoader.get(loadedApk);
-            if(!(classLoader instanceof DelegateClassLoader)){
+            if (!(classLoader instanceof DelegateClassLoader)) {
                 AtlasHacks.LoadedApk_mClassLoader.set(loadedApk, RuntimeVariables.delegateClassLoader);
             }
         }
-        
+
         //AtlasHacks.LoadedApk_mResources.on(loadedApk).set(resources);
-        AtlasHacks.LoadedApk_mResources.set(loadedApk,resources);
+        AtlasHacks.LoadedApk_mResources.set(loadedApk, resources);
         //AtlasHacks.ContextImpl_mResources.on(application.getBaseContext()).set(resources);
         AtlasHacks.ContextImpl_mResources.set(application.getBaseContext(), resources);
         //AtlasHacks.ContextImpl_mTheme.on(application.getBaseContext()).set(null);
@@ -434,14 +449,14 @@ public class AndroidHack {
         try {
             Collection<WeakReference<Resources>> references = null;
             if (Build.VERSION.SDK_INT <= 18) {
-                HashMap<?, WeakReference<Resources>> map = (HashMap<?, WeakReference<Resources>>)sActiveResourcesField.get(activityThread);
+                HashMap<?, WeakReference<Resources>> map = (HashMap<?, WeakReference<Resources>>) sActiveResourcesField.get(activityThread);
                 references = map.values();
             } else if (Build.VERSION.SDK_INT < 24) {
                 Object sResourcesManager = sgetInstanceMethod.invoke(sResourcesManagerClazz);
-                ArrayMap<?,WeakReference<Resources>> activeResources = (ArrayMap<?,WeakReference<Resources>>)sActiveResourcesField.get(sResourcesManager);
+                ArrayMap<?, WeakReference<Resources>> activeResources = (ArrayMap<?, WeakReference<Resources>>) sActiveResourcesField.get(sResourcesManager);
                 references = activeResources.values();
             }
-            if(Build.VERSION.SDK_INT<24) {
+            if (Build.VERSION.SDK_INT < 24) {
                 for (WeakReference<Resources> wr : references) {
                     Resources res = wr.get();
                     if (res != null) {
@@ -471,20 +486,21 @@ public class AndroidHack {
 //
 //            }
 
-        }catch(Throwable e){
+        } catch (Throwable e) {
             e.printStackTrace();
         }
 
     }
 
-    static Field sActiveResourcesField =null;
-//    static Class sResourcesKeyClazz = null;
+    static Field sActiveResourcesField = null;
+    //    static Class sResourcesKeyClazz = null;
 //    static Field sResDirField = null;
     static Class sResourcesManagerClazz = null;
-//    static Field sResourcesManagerField = null;
+    //    static Field sResourcesManagerField = null;
     static Method sgetInstanceMethod = null;
     static Field sAssetsField = null;
-    static{
+
+    static {
         try {
             if (Build.VERSION.SDK_INT <= 18) {
                 Class ActivityThreadClazz = Class.forName("android.app.ActivityThread");
@@ -516,7 +532,8 @@ public class AndroidHack {
                 sgetInstanceMethod = sResourcesManagerClazz.getDeclaredMethod("getInstance");
                 sgetInstanceMethod.setAccessible(true);
             }
-        }catch(Throwable e){}
+        } catch (Throwable e) {
+        }
     }
 
     private static Field findField(Object instance, String name) throws NoSuchFieldException {
@@ -544,7 +561,7 @@ public class AndroidHack {
             throw new Exception("Failed to get ActivityThread.sCurrentActivityThread");
         }
         //return (Instrumentation)AtlasHacks.ActivityThread_mInstrumentation.on(activityThread).get();
-        return (Instrumentation)AtlasHacks.ActivityThread_mInstrumentation.get(activityThread);
+        return (Instrumentation) AtlasHacks.ActivityThread_mInstrumentation.get(activityThread);
     }
 
     public static void injectInstrumentationHook(Instrumentation instrumentation) throws Exception {
@@ -553,7 +570,7 @@ public class AndroidHack {
             throw new Exception("Failed to get ActivityThread.sCurrentActivityThread");
         }
         //AtlasHacks.ActivityThread_mInstrumentation.on(activityThread).set(instrumentation);
-        AtlasHacks.ActivityThread_mInstrumentation.set(activityThread,instrumentation);
+        AtlasHacks.ActivityThread_mInstrumentation.set(activityThread, instrumentation);
     }
 
 //    public static void injectContextHook(ContextWrapper wrapper, ContextWrapper contextHook) {

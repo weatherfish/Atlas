@@ -23,6 +23,12 @@ public class AtlasCrashManager {
         @Override
         public void uncaughtException(Thread thread, Throwable ex) {
             //force stop pkg
+
+            /**
+             * setPackageStoppedState()将包的状态设置为stopped
+             *
+             * 点击home弹出的清理用户最近使用app采取的策略便是force-stop.
+             */
             try {
                 Log.e("CrashManager","force stop");
                 Field mPMField = RuntimeVariables.androidApplication.getPackageManager().getClass().getDeclaredField("mPM");

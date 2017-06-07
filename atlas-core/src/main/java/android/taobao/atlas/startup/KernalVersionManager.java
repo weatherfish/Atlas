@@ -231,9 +231,9 @@ import java.util.Set;
 public class KernalVersionManager {
 
     private static KernalVersionManager sBaseInfoManager;
-    private final File  BASELINEINFO_DIR ;
-    private final File  BASELINEINFO;
-    private final File  BASELINEINFO_NEW;
+    private final File  BASELINEINFO_DIR ;  // /data/user/0/com.taobao.demo/files/bundleBaseline
+    private final File  BASELINEINFO;       // /data/user/0/com.taobao.demo/files/bundleBaseline/baselineInfo
+    private final File  BASELINEINFO_NEW;   // /data/user/0/com.taobao.demo/files/bundleBaseline/baselineInfo_new
     private String LAST_VERSIONNAME;
     private String LAST_UPDATE_BUNDLES;
     private String CURRENT_UPDATE_BUNDLES;
@@ -275,6 +275,7 @@ public class KernalVersionManager {
     }
 
     public void init(){
+        //加进程锁
         KernalFileLock.getInstance().LockExclusive(BASELINEINFO_DIR);
         if(shouldSyncUpdateInThisProcess()){
             if(BASELINEINFO_NEW.exists()){
@@ -300,7 +301,7 @@ public class KernalVersionManager {
             }
         }
         KernalFileLock.getInstance().unLock(BASELINEINFO_DIR);
-
+        //将BASELINEINFO_NEW 中的信息作为更新信息
         String baselineVersion = "";
         String updateBundles = "";
         String lastVersionName = "";
@@ -310,6 +311,7 @@ public class KernalVersionManager {
         if(BASELINEINFO.exists()){
             try {
                 /**
+                 *
                  * 写入顺序
                  * 上一次versionname
                  * 上一次更新内容
@@ -330,6 +332,7 @@ public class KernalVersionManager {
                 cachePreVersion = input.readBoolean();
                 input.close();
             } catch (Throwable e) {
+                //写失败原因到SharedPreferences
                 updateMonitor(KernalConstants.DD_BASELINEINFO_FAIL, e==null?"":e.getMessage());
                 killChildProcesses(KernalConstants.baseContext);
                 BASELINEINFO.delete();
@@ -343,7 +346,7 @@ public class KernalVersionManager {
         CURRENT_UPDATE_BUNDLES= updateBundles;
         DEXPATCH_VERSION = dexpatchVersion;
         DEXPATCH_BUNDLES = dexPatchBundles;
-
+        //Bundle更新部分处理
         parseUpdatedBundles();
     }
 
@@ -425,6 +428,8 @@ public class KernalVersionManager {
         return DEXPATCH_VERSION;
     }
 
+    //解析Bundle升级信息，并且保存到currentUpdateBundles和currentDexPatchBundles
+    //格式：
     public synchronized void parseUpdatedBundles(){
         if(CURRENT_UPDATE_BUNDLES!=null){
             String[] bundles = CURRENT_UPDATE_BUNDLES.split(";");
@@ -458,6 +463,7 @@ public class KernalVersionManager {
         }
     }
 
+    //表示需要回滚，写deprecated_mark
     public void rollbackHardly(){
         try {
             File baseLineDir = BASELINEINFO_DIR;

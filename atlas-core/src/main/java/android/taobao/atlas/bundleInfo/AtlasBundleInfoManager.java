@@ -469,6 +469,9 @@ public class AtlasBundleInfoManager {
      */
     private synchronized void InitBundleInfoByVersionIfNeed(){
         if(mCurrentBundleListing==null){
+            /**
+             * bundleInfo  这个信息暂时也没找到在哪儿重写进去的
+             */
             String bundleInfoStr = (String)RuntimeVariables.getFrameworkProperty("bundleInfo");
             if(!TextUtils.isEmpty(bundleInfoStr)) {
                 try {

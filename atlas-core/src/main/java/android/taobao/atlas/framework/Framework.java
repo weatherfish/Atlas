@@ -469,6 +469,7 @@ public final class Framework {
 
     public static List<Bundle> getBundles() {
         final List<Bundle> res = new ArrayList<Bundle>(bundles.size());
+        //bundles中保存了当前全部的安装的Bundle记录map
         synchronized (bundles) {
             res.addAll(bundles.values());
         }

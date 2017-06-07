@@ -224,12 +224,11 @@ import android.os.Process;
 import android.taobao.atlas.startup.patch.KernalBundle;
 import android.taobao.atlas.startup.patch.KernalConstants;
 import android.text.TextUtils;
+
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-
-import dalvik.system.PathClassLoader;
 
 /**
  * Created by guanjie on 16/10/20.
@@ -253,22 +252,32 @@ public class AtlasBridgeApplication extends Application{
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
+
+        //判断App是否正常启动
         if (!isApplicationNormalCreate(base)) {
             android.os.Process.killProcess(android.os.Process.myPid());
         }
-        // *0 checkload kernalpatch
+        // *0 checkload kernalpatch 是否已经下载，需要升级
         boolean isUpdated = isUpdated(getBaseContext());
         KernalConstants.baseContext = getBaseContext();
+
+        //APK_PATH = /data/app/com.taobao.demo-2/base.apk
         KernalConstants.APK_PATH = getBaseContext().getApplicationInfo().sourceDir;
         KernalConstants.PROCESS = getProcessName(getBaseContext());
         KernalConstants.INSTALLED_VERSIONNAME = mInstalledVersionName;
+
+        //RAW_APPLICATION_NAME = AtlasBridgeApplication
         KernalConstants.RAW_APPLICATION_NAME = getClass().getName();
         boolean hasKernalPatched  = false;
         boolean isMainProcess = getBaseContext().getPackageName().equals(getProcessName(getBaseContext()));
         if(isUpdated){
+            //清除之前的升级信息，避免重复导致的失败
             if (!isMainProcess) {
                 android.os.Process.killProcess(android.os.Process.myPid());
             }
+
+            //  /data/user/0/com.taobao.demo/files/   即  /data/data/com.taobao.demo/files/
+            // storageDir =/data/user/0/com.taobao.demo/files/storage/
             File storageDir = new File(getFilesDir(),"storage");
             File bundleBaseline = new File(getFilesDir(),"bundleBaseline");
             deleteDirectory(storageDir);
@@ -276,11 +285,15 @@ public class AtlasBridgeApplication extends Application{
             if(storageDir.exists() || bundleBaseline.exists()){
                 android.os.Process.killProcess(Process.myPid());
             }
+            //KernalVersionManager的初始化，主要是处理Bundle的两类升级，这里应该不存在升级
             KernalVersionManager.instance().init();
+            //写系统属性 APK_INSTALLED
             System.setProperty("APK_INSTALLED", "true");
         }else{
+            // KernalVersionManager的初始化，主要是处理Bundle的两类升级
             KernalVersionManager.instance().init();
 
+            //主dex被动态部署过
             if(KernalBundle.hasKernalPatch()) {
                 //has patch ? true -> must load successed
                 hasKernalPatched = KernalBundle.checkloadKernalBundle(this,mInstalledVersionName, getProcessName(getBaseContext()));
@@ -299,6 +312,7 @@ public class AtlasBridgeApplication extends Application{
             }
         }
 
+        //黑科技开始了。。。
         try {
             //初始化baselineinfomanager
             Class BaselineInfoManagerClazz = getBaseContext().getClassLoader().loadClass("android.taobao.atlas.versionInfo.BaselineInfoManager");
@@ -306,6 +320,7 @@ public class AtlasBridgeApplication extends Application{
             Object instance = instanceMethod.invoke(BaselineInfoManagerClazz);
             Field mVersionManager = BaselineInfoManagerClazz.getDeclaredField("mVersionManager");
             mVersionManager.setAccessible(true);
+            //反射加代理注入 ： BaselineInfoManager代理KernalVersionManager，最终调用的是KernalVersionManager的方法
             mVersionManager.set(instance,KernalVersionManager.instance());
 
             Class BridgeApplicationDelegateClazz = getBaseContext().getClassLoader().loadClass("android.taobao.atlas.bridge.BridgeApplicationDelegate");
@@ -314,9 +329,11 @@ public class AtlasBridgeApplication extends Application{
             parTypes[1]= String.class;
             parTypes[2]= String.class;
             parTypes[3]= boolean.class;
+            //调用了四个参数的构造方法
             Constructor<?> con = BridgeApplicationDelegateClazz.getConstructor(parTypes);
             mBridgeApplicationDelegate = con.newInstance(this,getProcessName(getBaseContext()),mInstalledVersionName,isUpdated);
             Method method = BridgeApplicationDelegateClazz.getDeclaredMethod("attachBaseContext");
+            //反射的方式执行 BridgeApplicationDelegate.attachBaseContext()
             method.invoke(mBridgeApplicationDelegate);
         } catch (Throwable e) {
             throw new RuntimeException(e);
@@ -354,6 +371,7 @@ public class AtlasBridgeApplication extends Application{
         StackTraceElement[] stackElements = ex.getStackTrace();
         if (stackElements != null) {
             for (int i = 0; i < stackElements.length; i++) {
+                //第一次启动的时候，调用堆栈不会有hock出来的这个类
                 if (stackElements[i].getClassName().equalsIgnoreCase("android.taobao.atlas.runtime.InstrumentationHook")) {
                     return false;
                 }
@@ -418,6 +436,8 @@ public class AtlasBridgeApplication extends Application{
         int lastVersionCode = prefs.getInt("last_version_code", 0);
         String lastVersionName = prefs.getString("last_version_name", "");
         long lastupdatetime = prefs.getLong("lastupdatetime",-1);
+        //所有的都是相同表示不需要升级或者回滚
+        // packageInfo.lastUpdateTime  表示这个apk系统记录的最后升级时间
         if(packageInfo.versionCode==lastVersionCode && TextUtils.equals(packageInfo.versionName,
                 lastVersionName) && lastupdatetime==packageInfo.lastUpdateTime && !needRollback()){
             return false;
@@ -445,6 +465,7 @@ public class AtlasBridgeApplication extends Application{
     public boolean needRollback(){
         File baseLineDir = new File(getBaseContext().getFilesDir().getAbsolutePath() + File.separatorChar + "bundleBaseline");
         if(baseLineDir.exists()){
+            //判断 deprecated_mark 这个文件确认是否需要回滚
             File deprecated = new File(baseLineDir, "deprecated_mark");
             if(deprecated.exists()){
                 return true;

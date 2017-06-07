@@ -26,6 +26,7 @@ public class ReceiverBridge {
 
     public synchronized static void registerAdditionalReceiver() {
         if(receiver == null){
+            //这里注册的广播暂时不清楚干嘛的
             receiver = new DelegateReceiver();
             IntentFilter additionalFilter = AdditionalPackageManager.getInstance().getAdditionIntentFilter();
             RuntimeVariables.androidApplication.registerReceiver(receiver,additionalFilter);

@@ -217,7 +217,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
-import android.taobao.atlas.framework.Atlas;
 import android.taobao.atlas.runtime.newcomponent.AdditionalPackageManager;
 import android.taobao.atlas.versionInfo.BaselineInfoManager;
 import android.text.TextUtils;
@@ -231,6 +230,9 @@ import java.util.List;
 
 /**
  * Created by guanjie on 2017/2/14.
+ *
+ * PackageManagerDelegate  这个是android.app.ApplicationPackageManager（IPackageManager）的委托类,
+ * 所有查找activity，service等等四大组件的操作都会经过这里，查找不到，才会去系统查找
  */
 
 public class PackageManagerDelegate {
@@ -255,6 +257,7 @@ public class PackageManagerDelegate {
                     }
                     mProxyPm = Proxy.newProxyInstance(mBaseContext.getClassLoader(), new Class[]{IPackageManagerClass}, mPackageManagerProxyhandler);
                 }
+                //将代理类mProxyPm注入到原来的类里面去，代理android.app.ApplicationPackageManager
                 field.set(manager, mProxyPm);
             }
         }catch(Throwable e){
@@ -274,6 +277,7 @@ public class PackageManagerDelegate {
             }catch(InvocationTargetException e){
                 throw e.getTargetException();
             }
+
             if(method.getName().equals("getPackageInfo") && args[0]!=null && args[0].equals(mBaseContext.getPackageName())){
                 PackageInfo info = (PackageInfo)object;
                 if(info==null){

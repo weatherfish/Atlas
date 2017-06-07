@@ -208,10 +208,6 @@
 
 package android.taobao.atlas.hack;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import android.app.Application;
 import android.app.IActivityManager;
 import android.app.Instrumentation;
@@ -229,6 +225,10 @@ import android.taobao.atlas.hack.Hack.HackedClass;
 import android.taobao.atlas.hack.Hack.HackedField;
 import android.taobao.atlas.hack.Hack.HackedMethod;
 import android.view.ContextThemeWrapper;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class AtlasHacks extends HackDeclaration implements AssertionFailureHandler {
 
@@ -330,21 +330,26 @@ public class AtlasHacks extends HackDeclaration implements AssertionFailureHandl
     public static ArrayList<HackedMethod>                       GetPackageInfoList      = new ArrayList<HackedMethod>();
 
     public static boolean defineAndVerify() throws AssertionArrayException {
+        //sIsReflectChecked 是否进来过，进来过就置为true
         if (sIsReflectChecked) return sIsReflectAvailable;
         AtlasHacks atlasHacks = new AtlasHacks();
         try {
+            //失败的回调
             Hack.setAssertionFailureHandler(atlasHacks);
             if (Build.VERSION.SDK_INT == 11) {
                 atlasHacks.onAssertionFailure(new HackAssertionException("Hack Assertion Failed: Android OS Version 11"));
             }
-            allClasses();
-            allConstructors();
-            allFields();
-            allMethods();
-            // 校验完成
+
+            allClasses();   //使用 HackedClass 包装了一层，做了各种类型检查等等
+            allConstructors(); //使用 HackedConstructor 包装了一层，且使用的是 Hack 的 PackageParser 来构造
+            allFields();    //使用 HackedField 包装了一层，，且使用的是 Hack 的 ActivityThread.HackedField 来构造，并进行类型检查
+            allMethods();   //使用 HackedMethod 包装了一层，且使用的是 Hack 的 ActivityThread.HackedMethod 来构造，并进行类型检查
+
+            // 校验完成, mExceptionArray抛出异常时会加1
             if (atlasHacks.mExceptionArray != null) {
                 // 校验存在失败
                 sIsReflectAvailable = false;
+                //这个异常 AssertionArrayException 貌似捕获不到
                 throw atlasHacks.mExceptionArray;
             } else {
                 // 校验成功

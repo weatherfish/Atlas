@@ -262,6 +262,7 @@ public class BridgeApplicationDelegate {
 
     public void attachBaseContext(){
         try {
+            //黑科技：所有的Hacks部分都在这里定义了
             AtlasHacks.defineAndVerify();
         } catch (AssertionArrayException e) {
             throw new RuntimeException(e);
@@ -271,8 +272,11 @@ public class BridgeApplicationDelegate {
         if(!TextUtils.isEmpty(mInstalledVersionName)){
             RuntimeVariables.sInstalledVersionName = mInstalledVersionName;
         }
+        //这里设置了一个全局捕获异常,并force stop进程
         AtlasCrashManager.forceStopAppWhenCrashed();
         System.out.print(SoLoader.class.getName());
+
+        //在atlas真正初始化前，回调 AtlasPreLauncher 的实现类，暂时未找到在哪儿注入的？？
         try {
             String preLaunchStr = (String) RuntimeVariables.getFrameworkProperty("preLaunch");
             if (!TextUtils.isEmpty(preLaunchStr)) {
@@ -288,15 +292,25 @@ public class BridgeApplicationDelegate {
         // *2 init atlas use reflect
         boolean multidexEnable = false;
         try {
+            //mRawApplication 为 AtlasBridgeApplication的实例
             ApplicationInfo appInfo = mRawApplication.getPackageManager()
                     .getApplicationInfo(mRawApplication.getPackageName(),
                             PackageManager.GET_META_DATA);
+            //
+            /**
+             * 获取到主工程真是的application
+             *
+             * 这两个值是最终生成的apk的xml文件里面自动写入进去的，如下：
+             * <meta-data android:name="REAL_APPLICATION" android:value="com.taobao.demo.DemoApplication"/>
+             * <meta-data android:name="multidex_enable" android:value="true"/>
+             */
             mRealApplicationName = appInfo.metaData.getString("REAL_APPLICATION");
             multidexEnable = appInfo.metaData.getBoolean("multidex_enable");
         }catch(PackageManager.NameNotFoundException e){
             throw new RuntimeException(e);
         }
 
+        //支持拆dex
         if(multidexEnable){
             MultiDex.install(mRawApplication);
         }
@@ -305,15 +319,20 @@ public class BridgeApplicationDelegate {
         if(mRealApplicationName.startsWith(".")){
             mRealApplicationName = mRawApplication.getPackageName() + mRealApplicationName;
         }
+        //保存主工程的application
         RuntimeVariables.sRealApplicationName = mRealApplicationName;
 
         try {
+            //初始化atlas框架
             Atlas.getInstance().init(mRawApplication, mIsUpdated);
         } catch (Exception e) {
             throw new RuntimeException("atlas initialization fail" + e.getMessage());
         }
         //////////////////////////////////////////launchTime////////////////////
         try{
+            /**
+             * 设置BuildConfig中存储App的启动时间launchTime
+             */
             Class BuildConfig = Class.forName(mRawApplication.getPackageName()+".BuildConfig");
             Field launchTimeField = BuildConfig.getDeclaredField("launchTime");
             launchTimeField.setAccessible(true);
@@ -336,8 +355,9 @@ public class BridgeApplicationDelegate {
 
     public void onCreate(){
         try {
+            //注册广播
             AdditionalActivityManagerProxy.get().startRegisterReceivers(RuntimeVariables.androidApplication);
-            // *3 create real Application
+            // *3 create real Application，这里的ClassLoader就已经是DelegateClassLoader了
             mRealApplication = (Application) mRawApplication.getBaseContext().getClassLoader().loadClass(mRealApplicationName).newInstance();
 
             Object activityThread = AndroidHack.getActivityThread();

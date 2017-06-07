@@ -1,5 +1,6 @@
 group = 'com.taobao.android.atlasdemo'
-version = getEnvValue("versionName", "1.0.0");
+//版本号
+version = getEnvValue("versionName", "2.0.0");
 def apVersion = getEnvValue("apVersion", "");
 
 apply plugin: 'com.android.application'
@@ -12,12 +13,12 @@ repositories {
 
 android {
     compileSdkVersion 25
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '25.0.3'
     defaultConfig {
         applicationId "com.taobao.demo"
         minSdkVersion 14
         targetSdkVersion 25
-        versionCode 1
+        versionCode 2
         versionName version
         vectorDrawables.useSupportLibrary = true
     }
@@ -48,12 +49,13 @@ android {
 
 atlas {
 
-    atlasEnabled true
+    atlasEnabled true   //开启打包阶段的基于容器扩展的task
     tBuildConfig {
-        autoStartBundles = ['com.taobao.firstbundle'] //自启动bundle配置
-        outOfApkBundles = ['remotebundle']
-        preLaunch = 'com.taobao.demo.DemoPreLaunch'
+        autoStartBundles = ['com.taobao.firstbundle'] //自启动的bundle列表， 值是 packageName
+        outOfApkBundles = ['remotebundle']  //远程Bundle
+        preLaunch = 'com.taobao.demo.DemoPreLaunch' //提前执行的方法，必须实现AtlasPreLauncher接口
     }
+
 
     manifestOptions{
         addAtlasProxyComponents true
@@ -62,7 +64,15 @@ atlas {
 
     patchConfigs {
         debug {
+            //打动态部署 patch 包
             createTPatch true
+
+            //打andfix patch 包
+            //createAPatch true
+            //andfix 打包过滤 class 列表文件
+            //filterFile xx
+            //andfix 打包过滤 class 列表文件
+            //filterClasses []
         }
     }
 
@@ -70,6 +80,7 @@ atlas {
     buildTypes {
         debug {
             if (apVersion) {
+                //基线的依赖坐标
                 baseApDependency "com.taobao.android.atlasdemo:AP-debug:${apVersion}@ap"
                 patchConfig patchConfigs.debug
             }
@@ -103,7 +114,7 @@ dependencies {
     compile 'com.taobao.android:atlasupdate:1.1.4.7@aar'
 
     compile 'com.alibaba:fastjson:1.1.45.android@jar'
-    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.android.support:recyclerview-v7:25.3.0'
 }
 

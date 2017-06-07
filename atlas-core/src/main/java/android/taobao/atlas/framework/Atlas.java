@@ -208,11 +208,6 @@
 
 package android.taobao.atlas.framework;
 
-import java.io.File;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Properties;
-
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Application;
@@ -232,33 +227,37 @@ import android.os.Build;
 import android.os.Looper;
 import android.taobao.atlas.bundleInfo.AtlasBundleInfoManager;
 import android.taobao.atlas.bundleInfo.BundleListing;
-import android.taobao.atlas.runtime.ActivityTaskMgr;
-import android.taobao.atlas.runtime.SecurityHandler;
-import android.taobao.atlas.util.ApkUtils;
-import android.taobao.atlas.util.DexLoadBooster;
-import android.taobao.atlas.util.WrapperUtil;
-import android.text.TextUtils;
-import android.util.Log;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.BundleException;
-import org.osgi.framework.BundleListener;
-
 import android.taobao.atlas.hack.AndroidHack;
 import android.taobao.atlas.hack.AssertionArrayException;
 import android.taobao.atlas.hack.AtlasHacks;
 import android.taobao.atlas.runtime.ActivityManagerDelegate;
+import android.taobao.atlas.runtime.ActivityTaskMgr;
 import android.taobao.atlas.runtime.BundleLifecycleHandler;
-import android.taobao.atlas.runtime.newcomponent.AdditionalPackageManager;
 import android.taobao.atlas.runtime.ClassNotFoundInterceptorCallback;
 import android.taobao.atlas.runtime.DelegateClassLoader;
 import android.taobao.atlas.runtime.FrameworkLifecycleHandler;
 import android.taobao.atlas.runtime.InstrumentationHook;
 import android.taobao.atlas.runtime.RuntimeVariables;
+import android.taobao.atlas.runtime.SecurityHandler;
+import android.taobao.atlas.runtime.newcomponent.AdditionalPackageManager;
+import android.taobao.atlas.util.ApkUtils;
+import android.taobao.atlas.util.DexLoadBooster;
+import android.taobao.atlas.util.WrapperUtil;
+import android.text.TextUtils;
+import android.util.Log;
 
 import com.taobao.android.runtime.RuntimeUtils;
 
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.BundleListener;
+
+import java.io.File;
+import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static android.taobao.atlas.runtime.InstrumentationHook.sOnIntentRedirectListener;
 
@@ -303,9 +302,13 @@ public class Atlas {
         RuntimeVariables.androidApplication = application;
         RuntimeVariables.delegateResources  = application.getResources();
         Framework.containerVersion = RuntimeVariables.sInstalledVersionName;
+
+        //这里还是dalvik.system.PathClassLoader[DexPathList[[zip file "/data/app/com.taobao.demo-2/base.apk"],nativeLibraryDirectories=[/data/app/com.taobao.demo-2/lib/arm, /data/app/com.taobao.demo-2/base.apk!/lib/armeabi-v7a, /system/lib, /vendor/lib]]]
         ClassLoader cl = Atlas.class.getClassLoader();
+
+        // systemClassLoader 为系统的 PathClassLoader
         Framework.systemClassLoader = cl;
-        // defineAndVerify
+        // defineAndVerify，获取包名
         String packageName = application.getPackageName();
         // 
         DelegateClassLoader newClassLoader = new DelegateClassLoader(cl);
@@ -317,6 +320,10 @@ public class Atlas {
 //            e.printStackTrace();
 //        }
         // inject DelegateClassLoader & DelegateResources & InstrumentationHook
+        /**
+         * 注入DelegateClassLoader到LoadedApk
+         * 注入InstrumentationHook到ActivityThread
+         */
         AndroidHack.injectClassLoader(packageName, newClassLoader);
         AndroidHack.injectInstrumentationHook(new InstrumentationHook(AndroidHack.getInstrumentation(), application.getBaseContext()));
         // add listeners
@@ -334,8 +341,14 @@ public class Atlas {
             }else{
                 gDefault=AtlasHacks.ActivityManagerNative_gDefault.get(AtlasHacks.ActivityManagerNative.getmClass());
             }
+            /**
+             * 使用Hock的ActivityManagerDelegate代理gDefault
+             */
             AtlasHacks.Singleton_mInstance.hijack(gDefault, activityManagerProxy);
         }catch(Throwable e){}
+        /**
+         * Hock掉ActivityThread的内部类Handler
+         */
         AndroidHack.hackH();
     }
 

@@ -224,6 +224,9 @@ import org.osgi.framework.Bundle;
 import android.taobao.atlas.framework.Framework;
 import android.util.Log;
 
+/**
+ * 代理的ClassLoader
+ */
 public class DelegateClassLoader extends ClassLoader {
     
     public DelegateClassLoader(ClassLoader cl){
@@ -242,6 +245,7 @@ public class DelegateClassLoader extends ClassLoader {
         }
         Class<?> clazz = null;
         try {
+            //首先从已经安装的Bundle中查找是否存在此类
             clazz = loadFromInstalledBundles(className,false);
         }catch(Throwable e){
 

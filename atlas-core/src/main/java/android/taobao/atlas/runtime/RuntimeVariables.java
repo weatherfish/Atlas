@@ -220,12 +220,12 @@ import android.taobao.atlas.framework.FrameworkProperties;
 import android.taobao.atlas.runtime.dialog.DefaultProgress;
 import android.taobao.atlas.util.WrapperUtil;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.ViewGroup;
-import dalvik.system.DexFile;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
+
+import dalvik.system.DexFile;
 
 public class RuntimeVariables implements Serializable{
 
@@ -299,6 +299,11 @@ public class RuntimeVariables implements Serializable{
         return  false;
     }
 
+    /**
+     * 这个类FrameworkProperties在代码里面是空的，不知道在哪儿用黑科技注入了一个Field？？？
+     * @param fieldName
+     * @return
+     */
     public static Object getFrameworkProperty(String fieldName){
         if(FrameworkPropertiesClazz==null){
             FrameworkPropertiesClazz = FrameworkProperties.class;
