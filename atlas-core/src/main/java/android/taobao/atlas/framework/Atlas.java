@@ -208,25 +208,37 @@
 
 package android.taobao.atlas.framework;
 
+<<<<<<< HEAD
+=======
+import java.io.File;
+import java.io.InputStream;
+import java.util.List;
+
+>>>>>>> alibaba/master
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Dialog;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
-import android.content.pm.ResolveInfo;
-import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Looper;
+<<<<<<< HEAD
 import android.taobao.atlas.bundleInfo.AtlasBundleInfoManager;
 import android.taobao.atlas.bundleInfo.BundleListing;
+=======
+import android.taobao.atlas.runtime.ActivityTaskMgr;
+import android.taobao.atlas.runtime.SecurityHandler;
+import android.taobao.atlas.util.ApkUtils;
+import android.taobao.atlas.util.WrapperUtil;
+import android.text.TextUtils;
+import android.util.Log;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.BundleListener;
+
+>>>>>>> alibaba/master
 import android.taobao.atlas.hack.AndroidHack;
 import android.taobao.atlas.hack.AssertionArrayException;
 import android.taobao.atlas.hack.AtlasHacks;
@@ -246,6 +258,7 @@ import android.taobao.atlas.util.WrapperUtil;
 import android.text.TextUtils;
 import android.util.Log;
 
+<<<<<<< HEAD
 import com.taobao.android.runtime.RuntimeUtils;
 
 import org.osgi.framework.Bundle;
@@ -259,17 +272,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+=======
+>>>>>>> alibaba/master
 import static android.taobao.atlas.runtime.InstrumentationHook.sOnIntentRedirectListener;
 
 public class Atlas {
 
-    public static final String ATLAS_NEW_ACTIVITY_SUPPORT = "new_activity_support";
-    public static final String ATLAS_NEW_ACTIVITY_BUNDLE  = "new_activity_bundle";
-
     public static String sAPKSource ;
     protected static Atlas instance;
     public static boolean Downgrade_H5 = false;
-    public static Map<String,String> sConfig = new HashMap<String,String>();
     public static boolean isDebug;
 
     private Atlas(){
@@ -314,6 +325,7 @@ public class Atlas {
         DelegateClassLoader newClassLoader = new DelegateClassLoader(cl);
         // init RuntimeVariables
         RuntimeVariables.delegateClassLoader = newClassLoader;
+<<<<<<< HEAD
 //        try{
 //        	RuntimeVariables.delegateResources = getResources(application);
 //        }catch(Throwable e){
@@ -324,6 +336,9 @@ public class Atlas {
          * 注入DelegateClassLoader到LoadedApk
          * 注入InstrumentationHook到ActivityThread
          */
+=======
+
+>>>>>>> alibaba/master
         AndroidHack.injectClassLoader(packageName, newClassLoader);
         AndroidHack.injectInstrumentationHook(new InstrumentationHook(AndroidHack.getInstrumentation(), application.getBaseContext()));
         // add listeners
@@ -354,71 +369,26 @@ public class Atlas {
 
     public void startup(Application application,boolean isUpdated) {
         if(!RuntimeVariables.safeMode) {
-            DexLoadBooster.init(application.getBaseContext());
-            Properties props = new Properties();
-            String osgiInit = "false";
+            if(application.getPackageManager().equals("com.taobao.taobao")) {
+                try {
+                    RuntimeVariables.sDexLoadBooster.getClass().getDeclaredMethod("setVerificationEnabled").invoke(RuntimeVariables.sDexLoadBooster, false);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
             if (!WrapperUtil.isDebugMode(application) && ApkUtils.isRootSystem()) {
                 Atlas.getInstance().addBundleListener(new SecurityHandler());
             }
-            if (application.getPackageName().equals(RuntimeVariables.getProcessName(application))) {
-                if (isUpdated){
-                    // 把磁盘上的对应bundle全部删除，以便后面重新安装新版本
-                    osgiInit = "true";
-                }
-            }
-            props.put("osgi.init", osgiInit);
             try {
-                Framework.startup(props);
+                Framework.startup(isUpdated);
             } catch (Exception e) {
                 throw new RuntimeException( e);
             }
-            if(WrapperUtil.inMainProcess(application, RuntimeVariables.getProcessName(application))) {
+            if(RuntimeVariables.sCurrentProcessName.equals(RuntimeVariables.androidApplication.getPackageName())) {
                 System.setProperty("BUNDLES_INSTALLED", "true");
                 application.getBaseContext().sendBroadcast(new Intent("com.taobao.taobao.action.BUNDLES_INSTALLED"));
-                if (isUpdated) {
-                    UpdatePackageVersion(application);
-                }
             }
         }
-    }
-
-    private void UpdatePackageVersion(Application mApplication) {
-        PackageInfo packageInfo = WrapperUtil.getPackageInfo(mApplication);
-        SharedPreferences prefs = mApplication.getSharedPreferences("atlas_configs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("last_version_code", packageInfo.versionCode);
-        editor.putString("last_version_name", packageInfo.versionName);
-        editor.putLong("lastupdatetime",packageInfo.lastUpdateTime);
-        editor.commit();
-    }
-
-    public boolean restoreBundle(final String[] location){
-        return Framework.restoreBundle(location);
-    }
-
-    public void installOrUpdate(final String[] locations, final File[] files,String[] newVersion,long dexPatchVersion) throws BundleException {
-        Framework.installOrUpdate(locations, files,newVersion,dexPatchVersion);
-    }
-
-    @Deprecated
-    public void installOrUpdate(final String[] locations, final File[] files,String[] newVersion) throws BundleException {
-        Framework.installOrUpdate(locations, files,newVersion,123);
-    }
-
-    public List<ResolveInfo> queryNewIntentActivities(Intent intent){
-        return AdditionalPackageManager.getInstance().queryIntentActivities(intent);
-    }
-
-    public List<ResolveInfo> queryNewIntentServices(Intent intent){
-        return AdditionalPackageManager.getInstance().queryIntentService(intent);
-    }
-
-    public ActivityInfo getNewActivityInfo(ComponentName componentName, int flags){
-        return AdditionalPackageManager.getInstance().getNewComponentInfo(componentName,ActivityInfo.class);
-    }
-
-    public ServiceInfo getNewServiceInfo(ComponentName componentName, int flags){
-        return AdditionalPackageManager.getInstance().getNewComponentInfo(componentName,ServiceInfo.class);
     }
 
     public void checkDownGradeToH5(Intent intent) {
@@ -447,27 +417,6 @@ public class Atlas {
                 Log.w("Atlas","can not install bundle in ui thread");
             }
         }
-    }
-
-    public void onConfigUpdate(String key,String value){
-        sConfig.put(key,value);
-    }
-
-    public String getConfig(String key){
-        String value = sConfig.get(key);
-        return value!=null ? value : "";
-    }
-
-    public void startPatch(){
-        Framework.checkInstallDebugBundle();
-    }
-
-    public boolean isBundleNeedUpdate(String bundleName,String version){
-        BundleListing.BundleInfo info = AtlasBundleInfoManager.instance().getBundleInfo(bundleName);
-        if(info!=null && info.getVersion()!=null && info.getVersion().equals(version)){
-            return false;
-        }
-        return true;
     }
 
     public void setIntentRedirectListener(InstrumentationHook.OnIntentRedirectListener listener){
@@ -525,7 +474,6 @@ public class Atlas {
                 if(soFile.canWrite()){
                     soFile.delete();
                 }
-                b.getArchive().purge();
                 delDir = b.getArchive().getCurrentRevision().getRevisionDir();
                 bundle.uninstall();
                 if(delDir !=null ){
@@ -648,32 +596,6 @@ public class Atlas {
     	Framework.setClassNotFoundCallback(callback);
     }
 
-    /**
-     * 清除所有bundle,重置到安装时的状态,杀进程之前调用
-     */
-    public void reset() {
-        String process = Framework.currentProcessName;
-        if (process.contains(RuntimeVariables.androidApplication.getPackageName())) {
-            try {
-                ActivityManager am = (ActivityManager) RuntimeVariables.androidApplication
-                        .getSystemService(Context.ACTIVITY_SERVICE);
-                List<ActivityManager.RunningAppProcessInfo> a = am.getRunningAppProcesses();
-                for (int i = 0; i < a.size(); i++) {
-                    ActivityManager.RunningAppProcessInfo b = a.get(i);
-                    if (b.processName.contains(RuntimeVariables.androidApplication.getPackageName() + ":")) {
-                        android.os.Process.killProcess(b.pid);
-                        continue;
-                    }
-                }
-            } catch (Exception e2) {
-
-            }
-            Framework.deleteDirectory(new File(RuntimeVariables.androidApplication.getFilesDir(),"storage"));
-            Framework.deleteDirectory(new File(RuntimeVariables.androidApplication.getFilesDir(),"bundleBaseline"));
-            Framework.deleteDirectory(new File(RuntimeVariables.androidApplication.getFilesDir(),"bundleinfolist"));
-            RuntimeUtils.setEnable(false);
-        }
-    }
     /**
      * 设置bundle运行时依赖
      * @param source  需要添加依赖的bundle

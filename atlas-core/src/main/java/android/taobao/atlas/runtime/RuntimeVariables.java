@@ -209,7 +209,6 @@
 package android.taobao.atlas.runtime;
 
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Dialog;
 import android.content.Context;
@@ -218,10 +217,14 @@ import android.taobao.atlas.R;
 import android.taobao.atlas.framework.Atlas;
 import android.taobao.atlas.framework.FrameworkProperties;
 import android.taobao.atlas.runtime.dialog.DefaultProgress;
+<<<<<<< HEAD
 import android.taobao.atlas.util.WrapperUtil;
 import android.text.TextUtils;
 import android.view.ViewGroup;
 
+=======
+import android.view.ViewGroup;
+>>>>>>> alibaba/master
 import java.io.Serializable;
 import java.lang.reflect.Field;
 
@@ -237,11 +240,17 @@ public class RuntimeVariables implements Serializable{
 
     public static String              sRealApplicationName;
 
-    private static String              sCurrentProcessName = "";
+    public static String              sCurrentProcessName;
 
     public static boolean             safeMode = false;
 
     public static String              sInstalledVersionName;
+
+    public static long                sInstalledVersionCode;
+
+    public static long                sAppLastUpdateTime;
+
+    public static String              sApkPath;
 
     public static Atlas.ExternalBundleInstallReminder sReminder;
 
@@ -253,6 +262,7 @@ public class RuntimeVariables implements Serializable{
      * apilevel >=23
      */
     public static ClassLoader sRawClassLoader;
+    public static Object      sDexLoadBooster;
 
     public static Dialog alertDialogUntilBundleProcessed(Activity activity,String bundleName){
         if (activity != null) {
@@ -283,6 +293,7 @@ public class RuntimeVariables implements Serializable{
 
     public static Class FrameworkPropertiesClazz;
 
+<<<<<<< HEAD
     public static boolean isCurrentMaindexMatch(DexFile dexFile){
         try {
             FrameworkPropertiesClazz = dexFile.loadClass("android.taobao.atlas.framework.FrameworkProperties",ClassLoader.getSystemClassLoader());
@@ -304,6 +315,8 @@ public class RuntimeVariables implements Serializable{
      * @param fieldName
      * @return
      */
+=======
+>>>>>>> alibaba/master
     public static Object getFrameworkProperty(String fieldName){
         if(FrameworkPropertiesClazz==null){
             FrameworkPropertiesClazz = FrameworkProperties.class;
@@ -313,29 +326,16 @@ public class RuntimeVariables implements Serializable{
             field.setAccessible(true);
             return field.get(FrameworkPropertiesClazz);
         }catch(Throwable e){
-//            e.printStackTrace();
             return null;
         }
     }
 
-    public static synchronized String getProcessName(Context context) {
-        if(TextUtils.isEmpty(sCurrentProcessName)) {
-            int pid = android.os.Process.myPid();
-            try {
-                ActivityManager mActivityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-                for (ActivityManager.RunningAppProcessInfo appProcess : mActivityManager.getRunningAppProcesses()) {
-                    if (appProcess.pid == pid) {
-                        sCurrentProcessName =  appProcess.processName;
-                    }
-                }
-            } catch (Exception e) {
-            }
-        }
+    public static String getProcessName(Context context) {
         return sCurrentProcessName;
     }
 
     public static boolean shouldSyncUpdateInThisProcess(){
-        String processName = RuntimeVariables.getProcessName(RuntimeVariables.androidApplication);
+        String processName = RuntimeVariables.sCurrentProcessName;
         if(processName!=null &&
                 (processName.equals(RuntimeVariables.androidApplication.getPackageName()) ||
                         processName.toLowerCase().contains(":safemode")
