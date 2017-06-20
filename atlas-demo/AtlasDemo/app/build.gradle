@@ -1,6 +1,6 @@
 group = 'com.taobao.android.atlasdemo'
 //版本号
-version = getEnvValue("versionName", "2.0.0");
+version = getEnvValue("versionName", "1.0.0");
 def apVersion = getEnvValue("apVersion", "");
 
 apply plugin: 'com.android.application'
@@ -18,7 +18,7 @@ android {
         applicationId "com.taobao.demo"
         minSdkVersion 14
         targetSdkVersion 25
-        versionCode 2
+        versionCode 1
         versionName version
         vectorDrawables.useSupportLibrary = true
     }
@@ -56,23 +56,13 @@ atlas {
 
     atlasEnabled true   //开启打包阶段的基于容器扩展的task
     tBuildConfig {
-<<<<<<< HEAD
         autoStartBundles = ['com.taobao.firstbundle'] //自启动的bundle列表， 值是 packageName
         outOfApkBundles = ['remotebundle']  //远程Bundle
         preLaunch = 'com.taobao.demo.DemoPreLaunch' //提前执行的方法，必须实现AtlasPreLauncher接口
-    }
-
-
-    manifestOptions{
-=======
-        autoStartBundles = ['com.taobao.firstbundle'] //自启动bundle配置
-        outOfApkBundles = ['remotebundle']
-        preLaunch = 'com.taobao.demo.DemoPreLaunch'
         classInject false
     }
 
     manifestOptions {
->>>>>>> alibaba/master
         addAtlasProxyComponents true
     }
 
@@ -129,12 +119,7 @@ dependencies {
     compile 'com.taobao.android:atlasupdate:1.1.4.10@aar'
 
     compile 'com.alibaba:fastjson:1.1.45.android@jar'
-<<<<<<< HEAD
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
-=======
-    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
-    compile 'com.taobao.android:atlas_core:5.0.6-rc92@aar'
->>>>>>> alibaba/master
     compile 'com.android.support:recyclerview-v7:25.3.0'
 }
 

@@ -22,12 +22,6 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:25.1.0'
-<<<<<<< HEAD
-    compile 'com.taobao.android:atlas_core:5.0.6-rc21@aar'
-    compile 'com.google.android.gms:play-services-auth:10.2.6'
-    compile 'com.google.firebase:firebase-messaging:10.2.6'
-=======
     compile('com.taobao.android:atlas_core:5.0.7.11')
     //compile project(':atlas-core')
->>>>>>> alibaba/master
 }
