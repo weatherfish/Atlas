@@ -31,7 +31,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
@@ -45,7 +45,7 @@ android {
     //        dev {
     //            minSdkVersion 14
     //        }
-    //
+    
     //        beta {
     //            minSdkVersion 21
     //        }
@@ -60,6 +60,7 @@ atlas {
         outOfApkBundles = ['remotebundle']  //远程Bundle
         preLaunch = 'com.taobao.demo.DemoPreLaunch' //提前执行的方法，必须实现AtlasPreLauncher接口
         classInject false
+        dataBindingBundles = ['com.taobao.databindbundle']
     }
 
     manifestOptions {
@@ -96,7 +97,7 @@ atlas {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 
-    compile('com.taobao.android:atlas_core:5.0.7.11@aar') {
+    compile('com.taobao.android:atlas_core:5.0.7.30@aar') {
 
         transitive = true
     }
@@ -110,7 +111,7 @@ dependencies {
     bundleCompile project(':secondbundle')
     bundleCompile project(':remotebundle')
     bundleCompile project(':publicbundle')
-    //    bundleCompile project(':databindbundle')
+    bundleCompile project(':databindbundle')
 
     compile 'com.android.support:appcompat-v7:25.1.0'
     compile 'com.android.support:design:25.1.0'
@@ -119,7 +120,11 @@ dependencies {
     compile 'com.taobao.android:atlasupdate:1.1.4.10@aar'
 
     compile 'com.alibaba:fastjson:1.1.45.android@jar'
+<<<<<<< HEAD
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
+=======
+    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+>>>>>>> master
     compile 'com.android.support:recyclerview-v7:25.3.0'
 }
 
