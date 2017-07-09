@@ -3,11 +3,20 @@ group = 'com.taobao.android.atlasdemo'
 version = getEnvValue("versionName", "1.0.0");
 def apVersion = getEnvValue("apVersion", "");
 
+//是否正式版
+def isRelease() {
+    def has = hasProperty('RELEASE');
+    if (has && has.booleanValue()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 apply plugin: 'com.android.application'
 apply plugin: 'com.taobao.atlas'
 
 repositories {
-    mavenLocal()
     jcenter()
 }
 
@@ -23,20 +32,21 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
-
     dataBinding {
         enabled = true
     }
 
-
     buildTypes {
         release {
+            ndk {
+                abiFilters "armeabi"
+            }
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
             ndk {
-                abiFilters "x86","armeabi"
+                abiFilters "armeabi"
             }
         }
     }
@@ -45,7 +55,7 @@ android {
     //        dev {
     //            minSdkVersion 14
     //        }
-    
+
     //        beta {
     //            minSdkVersion 21
     //        }
@@ -53,7 +63,6 @@ android {
 }
 
 atlas {
-
     atlasEnabled true   //开启打包阶段的基于容器扩展的task
     tBuildConfig {
         autoStartBundles = ['com.taobao.firstbundle'] //自启动的bundle列表， 值是 packageName
@@ -67,7 +76,6 @@ atlas {
         addAtlasProxyComponents true
     }
 
-
     patchConfigs {
         debug {
             //打动态部署 patch 包
@@ -80,6 +88,10 @@ atlas {
             //andfix 打包过滤 class 列表文件
             //filterClasses []
         }
+        release {
+            //打动态部署 patch 包
+            createTPatch true
+        }
     }
 
 
@@ -91,17 +103,20 @@ atlas {
                 patchConfig patchConfigs.debug
             }
         }
+        release {
+            if (apVersion) {
+                //基线的依赖坐标
+                baseApDependency "com.taobao.android.atlasdemo:AP-release:${apVersion}@ap"
+                patchConfig patchConfigs.release
+            }
+        }
     }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 
-    compile('com.taobao.android:atlas_core:5.0.7.30@aar') {
-
-        transitive = true
-    }
-
+    compile('com.taobao.android:atlas_core:5.0.7.30@aar') { transitive = true }
 
     compile project(':middlewarelibrary')
     compile project(':splashscreen')
@@ -165,15 +180,35 @@ apply plugin: 'maven-publish'
 
 publishing {
     repositories {
-        mavenLocal()
+        maven {
+            if (isRelease()) {
+                url "http://localhost:8081/repository/maven-releases/"
+            } else {
+                url "http://localhost:8081/repository/maven-snapshots/"
+            }
+            credentials {
+                username "admin"
+                password "admin123"
+            }
+        }
+    }
+    publications {
+        maven(MavenPublication) {
+            if (isRelease()) {
+                artifact "${project.buildDir}/outputs/apk/${project.name}-release.ap"
+                artifactId "AP-release"
+            } else {
+                artifact "${project.buildDir}/outputs/apk/${project.name}-debug.ap"
+                artifactId "AP-debug"
+            }
+        }
     }
 }
 
-publishing {
-    publications {
-        maven(MavenPublication) {
-            artifact "${project.buildDir}/outputs/apk/${project.name}-debug.ap"
-            artifactId "AP-debug"
-        }
+beforeEvaluate {
+    tasks.matching {
+        it.name.equals('assembleDebug')
+    }.each {
+
     }
 }
